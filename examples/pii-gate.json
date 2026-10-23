@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "email": "block",
+    "git-push": "off",
+    "sql-pii-context": "block"
+  },
+  "allow_values": ["12345678950"],
+  "allow_paths": ["tests/*", "fixtures/*"],
+  "email_allow_domains": ["mycompany.example"],
+  "sql": {
+    "extra_pii_columns": ["protocol_no", "insurance_no"],
+    "extra_person_tables": ["donor", "guardian"],
+    "ignore_columns": ["name"]
+  },
+  "scan_prompts": true,
+  "fail_open": false,
+  "log": true
+}

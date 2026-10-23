@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pii-gate"
+version = "0.1.0"
+description = "Fail-closed personal-data gate for AI coding agents (Codex CLI, Claude Code): blocks national IDs, IBANs, card numbers, secrets, exfiltration commands and PII-selecting SQL before they leave your machine."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "sdursun1979" }]
+keywords = ["pii", "gdpr", "kvkk", "privacy", "codex", "claude-code", "hooks", "ai-agents", "dlp", "security"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.urls]
+Homepage = "https://github.com/sdursun1979/pii-gate"
+Issues = "https://github.com/sdursun1979/pii-gate/issues"
+Changelog = "https://github.com/sdursun1979/pii-gate/blob/main/CHANGELOG.md"
+
+[project.scripts]
+pii-gate = "pii_gate.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
