@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,14 +8,14 @@ version = "0.1.0"
 description = "Fail-closed personal-data gate for AI coding agents (Codex CLI, Claude Code): blocks national IDs, IBANs, card numbers, secrets, exfiltration commands and PII-selecting SQL before they leave your machine."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "sdursun1979" }]
 keywords = ["pii", "gdpr", "kvkk", "privacy", "codex", "claude-code", "hooks", "ai-agents", "dlp", "security"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
