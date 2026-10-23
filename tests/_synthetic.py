@@ -41,3 +41,43 @@ AWS_KEY = "AKIAIOSFODNN7QWERTYUX"[:20]
 OPENAI_KEY = "sk-proj-" + "a1B2c3D4e5F6g7H8i9J0k1L2"
 GITHUB_TOKEN = "ghp_" + "A" * 36
 PRIVATE_KEY = "-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"
+
+_DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
+_CF_ODD = dict(zip("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", (
+    1, 0, 5, 7, 9, 13, 15, 17, 19, 21, 1, 0, 5, 7, 9, 13, 15, 17, 19, 21,
+    2, 4, 18, 20, 11, 3, 6, 8, 12, 14, 16, 10, 22, 25, 24, 23)))
+
+
+def dni(digits8: str) -> str:
+    return digits8 + _DNI_LETTERS[int(digits8) % 23]
+
+
+def nie(prefix: str, digits7: str) -> str:
+    return prefix + digits7 + _DNI_LETTERS[int(str("XYZ".index(prefix)) + digits7) % 23]
+
+
+def codice_fiscale(first15: str) -> str:
+    total = sum(_CF_ODD[ch] if i % 2 == 0 else (int(ch) if ch.isdigit() else ord(ch) - 65)
+                for i, ch in enumerate(first15))
+    return first15 + chr(65 + total % 26)
+
+
+def bsn(digits8: str) -> str:
+    check = sum(int(c) * w for c, w in zip(digits8, range(9, 1, -1))) % 11
+    assert check < 10, "pick other digits"
+    return digits8 + str(check)
+
+
+def pesel(digits10: str) -> str:
+    total = sum(int(c) * w for c, w in zip(digits10, (1, 3, 7, 9, 1, 3, 7, 9, 1, 3)))
+    return digits10 + str((10 - total % 10) % 10)
+
+
+DNI_A = dni("48573920")
+NIE_A = nie("Y", "2846193")
+CF_A = codice_fiscale("TSTPRS90A41Z404")        # synthetic: female, 1 January 1990, born abroad
+CF_OMOCODIA = codice_fiscale("TSTPRS90A41Z40Q")  # last digit written as a letter
+CF_BAD_DAY = codice_fiscale("TSTPRS90A35Z404")   # check character fine, day 35 impossible
+BSN_A = bsn("10203040")
+PESEL_A = pesel("9001011234")                    # 1 January 1990
+PESEL_BAD_DATE = pesel("9013011234")             # month 13

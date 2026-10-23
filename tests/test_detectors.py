@@ -107,6 +107,87 @@ class SecretTests(unittest.TestCase):
             self.assertEqual(list(d.find_secrets(text)), [], text)
 
 
+class SpanishIdTests(unittest.TestCase):
+    def test_dni_and_nie_found(self):
+        for text in (f"dni {syn.DNI_A}", f"{syn.DNI_A[:8]}-{syn.DNI_A[8]}", f"nie: {syn.NIE_A}"):
+            found = list(d.find_es_id(text))
+            self.assertEqual(rules(found), ["es-dni"], text)
+            self.assertTrue(found[0].sample.endswith("***"))
+
+    def test_wrong_letter_embedded_and_trivial_are_ignored(self):
+        wrong = syn.DNI_A[:8] + ("A" if syn.DNI_A[8] != "A" else "B")
+        for text in (wrong, "A" + syn.DNI_A, syn.DNI_A + "9", "00000000T", syn.DNI_A.lower()):
+            self.assertEqual(list(d.find_es_id(text)), [], text)
+
+    def test_published_examples_and_allowlist(self):
+        self.assertEqual(list(d.find_es_id("12345678Z X1234567L")), [])
+        self.assertEqual(list(d.find_es_id(syn.DNI_A, allow={syn.DNI_A})), [])
+
+
+class ItalianCodiceFiscaleTests(unittest.TestCase):
+    def test_algorithm_matches_published_examples(self):
+        self.assertTrue(d.it_cf_valid("RSSMRA85T10A562S"))
+        self.assertTrue(d.it_cf_valid("MRTMTT25D09F205Z"))
+
+    def test_found_including_omocodia(self):
+        self.assertEqual(rules(d.find_it_cf(f"cf: {syn.CF_A}")), ["it-cf"])
+        self.assertEqual(rules(d.find_it_cf(syn.CF_OMOCODIA)), ["it-cf"])
+
+    def test_bad_check_bad_day_and_textbook_value_are_ignored(self):
+        wrong = syn.CF_A[:15] + ("A" if syn.CF_A[15] != "A" else "B")
+        for text in (wrong, syn.CF_BAD_DAY, "RSSMRA85T10A562S", "X" + syn.CF_A):
+            self.assertEqual(list(d.find_it_cf(text)), [], text)
+
+
+class DutchBsnTests(unittest.TestCase):
+    def test_algorithm_matches_published_example(self):
+        self.assertTrue(d.nl_bsn_valid("123456782"))
+
+    def test_found_only_next_to_its_label(self):
+        for text in (f"BSN: {syn.BSN_A}", f"burgerservicenummer {syn.BSN_A}", f'{{"bsn": "{syn.BSN_A}"}}'):
+            self.assertEqual(rules(d.find_nl_bsn(text)), ["nl-bsn"], text)
+        for text in (syn.BSN_A, f"order {syn.BSN_A} shipped", f"bsn" + " " * 50 + syn.BSN_A):
+            self.assertEqual(list(d.find_nl_bsn(text)), [], text)
+
+    def test_bad_check_and_examples_are_ignored(self):
+        broken = syn.BSN_A[:-1] + str((int(syn.BSN_A[-1]) + 1) % 10)
+        for text in (f"bsn {broken}", "bsn 123456782", "bsn 111111111"):
+            self.assertEqual(list(d.find_nl_bsn(text)), [], text)
+
+
+class PolishPeselTests(unittest.TestCase):
+    def test_algorithm_matches_published_example(self):
+        self.assertTrue(d.pl_pesel_valid("44051401359"))
+
+    def test_found_only_next_to_its_label(self):
+        self.assertEqual(rules(d.find_pl_pesel(f"PESEL: {syn.PESEL_A}")), ["pl-pesel"])
+        self.assertEqual(list(d.find_pl_pesel(syn.PESEL_A)), [])
+
+    def test_bad_date_bad_check_and_turkish_phone_are_ignored(self):
+        broken = syn.PESEL_A[:-1] + str((int(syn.PESEL_A[-1]) + 1) % 10)
+        for text in (f"pesel {syn.PESEL_BAD_DATE}", f"pesel {broken}", "pesel 44051401359", "tel 05321234567"):
+            self.assertEqual(list(d.find_pl_pesel(text)), [], text)
+
+
+class NationalIdEngineTests(unittest.TestCase):
+    def test_new_rules_block_by_default_and_can_be_turned_off(self):
+        from pii_gate.config import parse
+        from pii_gate.engine import Engine
+        text = f"dni {syn.DNI_A} cf {syn.CF_A} bsn {syn.BSN_A} pesel {syn.PESEL_A}"
+        rep = Engine().scan_text(text)
+        self.assertEqual(sorted(rep.counts()), ["es-dni", "it-cf", "nl-bsn", "pl-pesel"])
+        off = parse({"rules": {"es-dni": "off", "it-cf": "off", "nl-bsn": "warn", "pl-pesel": "off"}})
+        rep = Engine(off).scan_text(text)
+        self.assertFalse(rep.blocked)
+        self.assertEqual([f.rule for f in rep.warnings], ["nl-bsn"])
+
+    def test_sql_gate_knows_the_new_id_columns(self):
+        from pii_gate.engine import Engine
+        for col in ("dni", "nie", "nif", "codice_fiscale", "bsn", "pesel"):
+            rep = Engine().scan_text(f"SELECT {col} FROM orders")
+            self.assertEqual(list(rep.counts()), ["sql-pii"], col)
+
+
 class MaskTests(unittest.TestCase):
     def test_mask_never_leaks(self):
         self.assertEqual(d.mask("  secretvalue "), "s***")

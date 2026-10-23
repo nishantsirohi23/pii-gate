@@ -27,6 +27,10 @@ Tek bir depoya kurmak için `--project` ekleyin. Python 3.9 ve üstü, bağıml�
 | kural             | varsayılan | ne                                                                        |
 |-------------------|------------|---------------------------------------------------------------------------|
 | `tckn`            | engel      | TC kimlik numarası (iki kontrol basamağı doğrulanır)                      |
+| `es-dni`          | engel      | İspanya DNI ve NIE (kontrol harfi doğrulanır)                             |
+| `it-cf`           | engel      | İtalya codice fiscale (kontrol karakteri ve doğum günü doğrulanır)        |
+| `nl-bsn`          | engel      | Hollanda BSN (11 kontrolü), yalnız `BSN` etiketinin yanında               |
+| `pl-pesel`        | engel      | Polonya PESEL (sağlama ve doğum tarihi), yalnız `PESEL` etiketinin yanında |
 | `iban`            | engel      | IBAN (mod-97 ve ülke uzunluğu)                                            |
 | `card`            | engel      | Kart numarası (Luhn)                                                      |
 | `secret`          | engel      | Özel anahtar, AWS, OpenAI, GitHub, Slack, Google anahtarları, JWT          |

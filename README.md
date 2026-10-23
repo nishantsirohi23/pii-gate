@@ -50,6 +50,10 @@ Requirements: Python 3.9 or newer. No dependencies.
 | rule              | default | what                                                                                   |
 |-------------------|---------|----------------------------------------------------------------------------------------|
 | `tckn`            | block   | Turkish national ID numbers (11 digits, both check digits verified)                     |
+| `es-dni`          | block   | Spanish DNI and NIE (check letter verified)                                             |
+| `it-cf`           | block   | Italian codice fiscale (check character and birth day verified, omocodia aware)         |
+| `nl-bsn`          | block   | Dutch BSN (11-check), only next to a `BSN` or `burgerservicenummer` label               |
+| `pl-pesel`        | block   | Polish PESEL (checksum and birth date), only next to a `PESEL` label                     |
 | `iban`            | block   | IBANs (mod-97 checksum, per-country length)                                             |
 | `card`            | block   | payment card numbers (Luhn, 13 to 19 digits, plausible prefix)                          |
 | `secret`          | block   | private keys, AWS, OpenAI/Anthropic, GitHub, Slack, Google tokens, JWTs                 |
@@ -156,8 +160,9 @@ exec pii-gate scan --staged
 - Only what the agent *sends* is inspected. What the agent *reads* (a file full of records) is not
   redacted; that is on the roadmap via `PostToolUse`.
 - Codex does not expose its hosted web tools to hooks, so web calls are gated in Claude Code only.
-- Only Turkish national IDs are validated with checksums so far. Other countries' identifiers are
-  welcome as contributions, with synthetic test values.
+- National IDs are validated with checksums for Turkey, Spain, Italy, the Netherlands and Poland.
+  Dutch BSN and Polish PESEL checks are weak on their own, so those two are matched only next to their
+  label. Other countries' identifiers are welcome as contributions, with synthetic test values.
 - This is a guard rail, not a data-loss-prevention product. Use it together with least-privilege
   database accounts and the agents' own permission settings.
 

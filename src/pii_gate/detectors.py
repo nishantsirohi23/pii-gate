@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from typing import Iterable, Iterator
 
 
@@ -32,6 +33,10 @@ WELL_KNOWN_TEST_VALUES = frozenset({
     "378282246310005", "6011111111111117", "4000000000000002",
     "TR330006100519786457841326",        # example IBANs from the IBAN registry docs
     "GB82WEST12345698765432", "DE89370400440532013000",
+    "12345678Z", "X1234567L",            # widely published Spanish DNI/NIE examples
+    "RSSMRA85T10A562S",                  # the widely published codice fiscale example
+    "123456782", "111222333",            # widely published Dutch BSN examples
+    "44051401359",                       # the widely published PESEL example
 })
 
 # RFC 2606 / RFC 6761 reserved names plus GitHub's no-reply relay.
@@ -63,6 +68,114 @@ def find_tckn(text: str, allow: Iterable[str] = ()) -> Iterator[Finding]:
         if s in WELL_KNOWN_TEST_VALUES or s in allow or not tckn_valid(s):
             continue
         yield Finding("tckn", m.start(), m.end(), mask(s), "Turkish national ID, checksum valid")
+
+
+# --------------------------------------------------------------------------- other national IDs
+_DNI = re.compile(r"(?<![A-Za-z0-9])(?P<num>\d{8}|[XYZ]\d{7})-?(?P<letter>[A-Z])(?![A-Za-z0-9])")
+_DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
+
+
+def es_id_valid(num: str, letter: str) -> bool:
+    """Spanish DNI (8 digits) or NIE (X/Y/Z + 7 digits): the letter is the number mod 23."""
+    digits = str("XYZ".index(num[0])) + num[1:] if num[0] in "XYZ" else num
+    if len(set(digits)) == 1:
+        return False
+    return _DNI_LETTERS[int(digits) % 23] == letter
+
+
+def find_es_id(text: str, allow: Iterable[str] = ()) -> Iterator[Finding]:
+    for m in _DNI.finditer(text):
+        compact = m.group("num") + m.group("letter")
+        if compact in WELL_KNOWN_TEST_VALUES or compact in allow or m.group() in allow:
+            continue
+        if es_id_valid(m.group("num"), m.group("letter")):
+            yield Finding("es-dni", m.start(), m.end(), mask(compact), "Spanish DNI/NIE, check letter valid")
+
+
+_CF_DIGIT = "[0-9LMNPQRSTUV]"   # omocodia: digits may be replaced by these letters
+_CF = re.compile(
+    rf"(?<![A-Za-z0-9])[A-Z]{{6}}{_CF_DIGIT}{{2}}[ABCDEHLMPRST]{_CF_DIGIT}{{2}}[A-Z]{_CF_DIGIT}{{3}}[A-Z](?![A-Za-z0-9])"
+)
+_CF_ODD = dict(zip("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", (
+    1, 0, 5, 7, 9, 13, 15, 17, 19, 21, 1, 0, 5, 7, 9, 13, 15, 17, 19, 21,
+    2, 4, 18, 20, 11, 3, 6, 8, 12, 14, 16, 10, 22, 25, 24, 23)))
+_CF_OMOCODIA = {ch: str(i) for i, ch in enumerate("LMNPQRSTUV")}
+
+
+def it_cf_valid(s: str) -> bool:
+    """Italian codice fiscale: check character over 15 characters, plausible birth day (women +40)."""
+    if len(s) != 16:
+        return False
+    total = 0
+    for i, ch in enumerate(s[:15]):
+        total += _CF_ODD[ch] if i % 2 == 0 else (int(ch) if ch.isdigit() else ord(ch) - 65)
+    if chr(65 + total % 26) != s[15]:
+        return False
+    day = int("".join(_CF_OMOCODIA.get(ch, ch) for ch in s[9:11]))
+    return 1 <= day <= 31 or 41 <= day <= 71
+
+
+def find_it_cf(text: str, allow: Iterable[str] = ()) -> Iterator[Finding]:
+    for m in _CF.finditer(text):
+        s = m.group()
+        if s in WELL_KNOWN_TEST_VALUES or s in allow or not it_cf_valid(s):
+            continue
+        yield Finding("it-cf", m.start(), m.end(), mask(s), "Italian codice fiscale, check character valid")
+
+
+# Nine and eleven digit numbers are everywhere (orders, phones), and the BSN and PESEL checks are weak
+# enough that a random number passes often. These two are matched only next to their label.
+_LABEL_WINDOW = 40
+_BSN = re.compile(r"(?<!\d)\d{9}(?!\d)")
+_BSN_LABEL = re.compile(r"(?i)\b(?:bsn|burgerservicenummer|sofi(?:nummer)?)\b")
+_PESEL = re.compile(r"(?<!\d)\d{11}(?!\d)")
+_PESEL_LABEL = re.compile(r"(?i)\bpesel\b")
+
+
+def _labelled(label: "re.Pattern[str]", text: str, start: int) -> bool:
+    return bool(label.search(text[max(0, start - _LABEL_WINDOW):start]))
+
+
+def nl_bsn_valid(s: str) -> bool:
+    """Dutch citizen service number: 9 digits, 11-check (weights 9..2, last digit -1)."""
+    if len(s) != 9 or not s.isdigit() or len(set(s)) == 1:
+        return False
+    total = sum(int(c) * w for c, w in zip(s[:8], range(9, 1, -1))) - int(s[8])
+    return total % 11 == 0
+
+
+def find_nl_bsn(text: str, allow: Iterable[str] = ()) -> Iterator[Finding]:
+    for m in _BSN.finditer(text):
+        s = m.group()
+        if s in WELL_KNOWN_TEST_VALUES or s in allow or not nl_bsn_valid(s):
+            continue
+        if _labelled(_BSN_LABEL, text, m.start()):
+            yield Finding("nl-bsn", m.start(), m.end(), mask(s), "Dutch BSN next to its label, 11-check valid")
+
+
+def pl_pesel_valid(s: str) -> bool:
+    """Polish PESEL: 11 digits, weighted checksum, birth date with the century encoded in the month."""
+    if len(s) != 11 or not s.isdigit():
+        return False
+    weights = (1, 3, 7, 9, 1, 3, 7, 9, 1, 3)
+    if (10 - sum(int(c) * w for c, w in zip(s, weights)) % 10) % 10 != int(s[10]):
+        return False
+    yy, mm, dd = int(s[0:2]), int(s[2:4]), int(s[4:6])
+    century = {0: 1900, 1: 2000, 2: 2100, 3: 2200, 4: 1800}.get(mm // 20)
+    try:
+        date(century + yy, mm % 20, dd)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def find_pl_pesel(text: str, allow: Iterable[str] = ()) -> Iterator[Finding]:
+    for m in _PESEL.finditer(text):
+        s = m.group()
+        if s in WELL_KNOWN_TEST_VALUES or s in allow or not pl_pesel_valid(s):
+            continue
+        if _labelled(_PESEL_LABEL, text, m.start()):
+            yield Finding("pl-pesel", m.start(), m.end(), mask(s), "Polish PESEL next to its label, checksum valid")
 
 
 # --------------------------------------------------------------------------- IBAN
@@ -194,6 +307,10 @@ def find_secrets(text: str, allow: Iterable[str] = ()) -> Iterator[Finding]:
 
 def find_pii(text: str, allow: Iterable[str] = (), allow_domains: Iterable[str] = ()) -> Iterator[Finding]:
     yield from find_tckn(text, allow)
+    yield from find_es_id(text, allow)
+    yield from find_it_cf(text, allow)
+    yield from find_nl_bsn(text, allow)
+    yield from find_pl_pesel(text, allow)
     yield from find_iban(text, allow)
     yield from find_card(text, allow)
     yield from find_email(text, allow, allow_domains)

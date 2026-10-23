@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 (2026-10-23)
+
+- National IDs of four more countries, each with its checksum: Spanish DNI/NIE (`es-dni`),
+  Italian codice fiscale with omocodia (`it-cf`), Dutch BSN (`nl-bsn`) and Polish PESEL (`pl-pesel`).
+  BSN and PESEL are matched only next to their label, because their checks alone pass too many
+  ordinary numbers.
+- SQL gate: `dni`, `nie`, `nif`, `codice_fiscale`, `bsn`, `burgerservicenummer` and `pesel` are core columns.
+
 ## 0.1.0 (2026-10-23)
 
 First release.

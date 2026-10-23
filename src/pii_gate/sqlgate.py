@@ -23,6 +23,7 @@ CORE_COLUMNS: Set[str] = {
     "maiden_name", "maidenname", "kizlik_soyadi", "salary", "maas", "wage", "religion", "din",
     "ethnicity", "diagnosis", "tani", "icd", "icd10", "health_record", "medical_record", "biometric",
     "fingerprint", "genetic", "blood_type", "kan_grubu",
+    "dni", "nie", "nif", "codice_fiscale", "codicefiscale", "bsn", "burgerservicenummer", "pesel",
 }
 CONTEXT_COLUMNS: Set[str] = {
     "first_name", "firstname", "last_name", "lastname", "surname", "full_name", "fullname", "name",
