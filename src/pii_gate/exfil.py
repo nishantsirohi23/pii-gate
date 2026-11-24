@@ -15,7 +15,9 @@ _UPLOAD_FLAG = re.compile(
     r"|--post-data|--post-file|--body-file|-InFile|-Body|-Method\s+(?:Post|Put|Patch))(?=\s|=|$)", re.I)
 _ALWAYS_UPLOAD = re.compile(
     r"(?<![\w.-])(?:scp|sftp|rsync|rclone|Start-BitsTransfer)(?:\.exe)?\b"
-    r"|\baws\s+s3\s+(?:cp|sync|mv)\b|\bgsutil\s+(?:cp|rsync)\b|\baz\s+storage\s+blob\s+upload\b"
+    r"|\baws\s+s3\s+(?:cp|sync|mv)\b|\baws\s+s3api\s+put-object(?![\w-])"
+    r"|\bgsutil\s+(?:cp|rsync)\b|\bgcloud\s+storage\s+(?:cp|rsync)\b"
+    r"|\baz\s+storage\s+blob\s+upload\b|\bazcopy(?:\.exe)?\s+(?:copy|sync)\b"
     r"|\|\s*(?:nc|ncat|netcat|socat|ssh)\b|\b(?:nc|ncat|netcat|socat)\b[^|&;]*<", re.I)
 _CODE_HTTP = re.compile(
     r"requests\.(?:post|put|patch)\s*\(|urllib\.request\.urlopen\s*\([^)]*\bdata\s*="
